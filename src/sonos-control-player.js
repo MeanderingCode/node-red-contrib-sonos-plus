@@ -13,6 +13,8 @@ const {
 } = require('./Helper.js')
 
 const { ACTIONS_TEMPLATES, PLAYER_WITH_TV, setCmd, playNotificationRevised, getGroupMembersData } = require('./Sonos-Commands.js')
+const { subscribeToEvent } = require('./Soap.js')
+
 const process = require('process')
 const { Sonos } = require('sonos')
 
@@ -157,6 +159,8 @@ module.exports = function (RED) {
       createStereoPair(node, msg, sonosPlayer)
     } else if (command === 'separate_stereopair') {
       separateStereoPair(node, msg, sonosPlayer)
+    } else if (command === 'lab_subscribe') {
+      labSubscribe(node, msg, sonosPlayer)
     } else {
       warning(node, sonosFunction, 'dispatching commands - invalid command', 'command-> ' + JSON.stringify(command))
     }
@@ -1014,6 +1018,24 @@ module.exports = function (RED) {
         })
       })
       .then(() => {
+        success(node, msg, sonosFunction)
+        return true
+      })
+      .catch((error) => failure(node, msg, error, sonosFunction))
+  }
+
+  /**  Lab Subcribe to an event
+   * @param  {object} node current node
+   * @param  {object} msg incoming message
+   * @param  {object} sonosPlayer Sonos Player
+   * @output: {object} msg unmodified / stopped in case of error
+   */
+  function labSubscribe (node, msg, sonosPlayer) {
+    const sonosFunction = 'lab subscribe to event'
+
+    subscribeToEvent('http://192.168.178.37:1400', '/MediaRenderer/RenderingControl/Event', '<http://192.168.178.49:1880/notify>')
+      .then((response) => {
+        msg.payload = response
         success(node, msg, sonosFunction)
         return true
       })

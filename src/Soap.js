@@ -84,6 +84,53 @@ module.exports = {
     }
   },
 
+  /** Subscribe to an event.
+   * @param  {string} baseUrl http address of player including http prefix and port e.g 'http://192.168.178.37:1400'
+   * @param  {string} path SOAP endpoint e. g. '/MediaRenderer/RenderingControl/Event'
+   * @param  {string} listenerUrl e.g '<http://192.168.178.49:4000/sonos/events>' in brackets!!!!!
+   * @returns {promise} with response from player
+   * All  parameters are required.
+   */
+  subscribeToEvent: async function (baseUrl, path, listenerUrl) {
+    const response = await request({
+      method: 'SUBSCRIBE',
+      baseURL: baseUrl,
+      url: path,
+      headers: {
+        CALLBACK: listenerUrl,
+        NT: 'upnp:event',
+        TIMEOUT: 'Second-1800'
+      },
+      resolveWithFullResponse: true
+    })
+      .catch((error) => {
+        console.log('request failed. error >>' + JSON.stringify(error))
+        // In case of an SOAP error error.reponse helds the details.
+        // That goes usually together with status code 500 - triggering catch
+        // Experience: When using reject(error) the error.reponse get lost.
+        // Thats why error.response is checked and handled here!
+        if (error.response) {
+          // Indicator for SOAP Error
+          if (error.message.startsWith('Request failed with status code 500')) {
+            const errorCode = module.exports.getErrorCode(error.response.data)
+            console.log(name)
+            const errorMessage = module.exports.getErrorMessage(errorCode, name)
+            console.log('errormessage >>' + errorMessage)
+            throw new Error('n-r-c-s-p: statusCode >>500 & upnpErrorCode >>' + errorCode + ' upnpErrorMessage >>' + errorMessage)
+          } else {
+            throw new Error('n-r-c-s-p: ' + error.message + ' - ' + error.response.data)
+          }
+        } else {
+          throw error
+        }
+      })
+    return {
+      headers: response.headers,
+      body: response.data,
+      statusCode: response.status
+    }
+  },
+
   /**  Get error message from error code. If not found provide empty string.
    * @param  {string} errorCode
    * @param  {string} actionName
